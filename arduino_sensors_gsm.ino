@@ -1,3 +1,4 @@
+//TestChange
 #include <LiquidCrystal.h>
 #include <avr/io.h>
 #include <avr/wdt.h>
@@ -243,7 +244,8 @@ void selfTest()
     default:
       Serial.print("Unknown error,\t");
   }
-  //GSM
+  //GSM 
+  /*
   gsm.init();
   lcd.setCursor(0, 0);
   lcd.print(" - SELF TEST3 - ");
@@ -274,7 +276,7 @@ void selfTest()
     lcd.print((float)gsm.getSignalStrength(), 1);
     delay(1000);
     break;
-    }
+    } */
     //DataDe//lay
     delay(2000);
   }
@@ -303,10 +305,12 @@ void selfTest()
 
   void loop()
   {
+    float f0, f1;
     lcd.clear();
     lcd.print("   Pomiary ... ");
     delay(500);
-    ds18b20read();
+    ds18b20read(f0, f1);
+    printTemp(f0, f1);
     dht11read();
     delay(5000);
     waterRead();
@@ -339,7 +343,7 @@ void selfTest()
       strcat(sms, sensorTDHT);
       strcat(sms, "\nDHT11 hygro: ");
       strcat(sms, sensorHDHT);*/
-      while (!gsm.sendSms("0048728480408", "PRZYWROCONO ZASILANIE NA MODULE GSM")) {
+     /* while (!gsm.sendSms("0048728480408", "PRZYWROCONO ZASILANIE NA MODULE GSM")) {
     Serial.println("GSM FAIL");
     lcd.clear();
     lcd.setCursor(0, 0);
@@ -362,7 +366,7 @@ void selfTest()
     delay(1000);
     break;
     }
-
+*/
   }
   }
   /*void tempAlert(int dst1, dst2 ) //nie sprawdzone, nie dziala
@@ -376,7 +380,7 @@ void selfTest()
   void dht11read()
   {
     int chk = DHT.read11(DHT11_PIN);
-    Serial.print(",\t");
+    Serial.print("DHT11 \t");
     lcd.setCursor(9,0);
     Serial.println(DHT.temperature, 1);
      lcd.write(byte(3));
@@ -391,14 +395,14 @@ void selfTest()
       lcd.print("%");
   }
 
-  void ds18b20read()
+  void ds18b20read(float &f0, float &f1)
   {
     sensors.requestTemperatures();
     int ds1 = 0;
     int ds2 = 1;
-    float f0 = sensors.getTempCByIndex(ds1);
-    float f1 = sensors.getTempCByIndex(ds2);
-    Serial.print("Sensor ");
+    f0 = sensors.getTempCByIndex(ds1);
+    f1 = sensors.getTempCByIndex(ds2);
+    Serial.print("Sensors: ");
     Serial.println(dtostrf(f1, 6, 2, buffer));
     Serial.println(dtostrf(f0, 6, 2, buffer));
     int temp0 = f0;
@@ -433,4 +437,10 @@ void selfTest()
     //    lcd.print("Sygnal asu: ");
     //    lcd.print((float)gsm.getSignalStrength(),1);
   }
+  void printTemp(const float &f0, const float &f1) {
+    Serial.print("Sensor DS18B20(2) /t");
+    Serial.println(dtostrf(f1, 6, 2, buffer));
+    Serial.println(dtostrf(f0, 6, 2, buffer));
+    lcd.setCursor(0,0);
+}
 
