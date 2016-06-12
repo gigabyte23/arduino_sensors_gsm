@@ -19,6 +19,9 @@ dht DHT;
 //Init DallasSensors
 #define MAX_DS1820_SENSORS 2
 byte addr[MAX_DS1820_SENSORS][8];
+//WaterSensor
+const int WaterRead = A7;
+
 //Init HD44780
 LiquidCrystal lcd(2, 3, 4, 5, 6, 7);
 //OneWireBuffer
@@ -161,13 +164,13 @@ void selfTest()
   Serial.print("No more addresses.\n");
   lcd.clear();
   lcd.setCursor(0, 0);
-      lcd.print(" - SELF TEST1 - ");
-      lcd.setCursor(0, 1);
-      lcd.print("DS18B20:");
-      lcd.setCursor(10, 1);
-      lcd.print("AllAdr");
-      delay(1000);
-      lcd.clear();
+  lcd.print(" - SELF TEST1 - ");
+  lcd.setCursor(0, 1);
+  lcd.print("DS18B20:");
+  lcd.setCursor(10, 1);
+  lcd.print("AllAdr");
+  delay(1000);
+  lcd.clear();
   ds.reset_search();
 
   //DHT11
@@ -244,17 +247,17 @@ void selfTest()
     default:
       Serial.print("Unknown error,\t");
   }
-  //GSM 
+  //GSM
   /*
-  gsm.init();
-  lcd.setCursor(0, 0);
-  lcd.print(" - SELF TEST3 - ");
-  lcd.setCursor(0, 1);
-  lcd.print("Laczenie GSM... ");
-  Serial.println("Start - oczekiwanie na polaczenie z siecia (15 sekund)");
-  delay(19000);
-  Serial.println("Wysylanie...");
-  while (!gsm.sendSms("0048728480408", "PRZYWROCONO ZASILANIE NA MODULE GSM")) {
+    gsm.init();
+    lcd.setCursor(0, 0);
+    lcd.print(" - SELF TEST3 - ");
+    lcd.setCursor(0, 1);
+    lcd.print("Laczenie GSM... ");
+    Serial.println("Start - oczekiwanie na polaczenie z siecia (15 sekund)");
+    delay(19000);
+    Serial.println("Wysylanie...");
+    while (!gsm.sendSms("0048728480408", "PRZYWROCONO ZASILANIE NA MODULE GSM")) {
     Serial.println("GSM FAIL");
     lcd.clear();
     lcd.setCursor(0, 0);
@@ -262,11 +265,11 @@ void selfTest()
     lcd.setCursor(0, 1);
     lcd.print("Testuje siec:[?]");
         delay(5000);
-      
-   
-  }
-  Serial.println("GSM OK");
-  while (1) {
+
+
+    }
+    Serial.println("GSM OK");
+    while (1) {
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print(" - SELF TEST3 - ");
@@ -277,170 +280,188 @@ void selfTest()
     delay(1000);
     break;
     } */
-    //DataDe//lay
-    delay(2000);
-  }
-  //Setup
-  void setup()
-  {
-    //  gsm.init();
-    lcd.begin(16, 2);
-    lcd.print("Zespol Czujnikow");
-    lcd.setCursor(0, 1);
-    lcd.print("GSM  - v.02 2016");
-    delay(2000);
-    gsm.init();
-    Serial.begin(9600);
-    //do SelfTests
-    selfTest();
-    lcd.createChar(0, hygro);
-    lcd.createChar(1, t1);
-    lcd.createChar(2, t2);
-    lcd.createChar(3, t3);
-    lcd.createChar(4, cels);
-    lcd.clear();
-    //Reload Sensor Bus
-    sensors.begin();
-  }
-
-  void loop()
-  {
-    float f0, f1;
-    lcd.clear();
-    lcd.print("   Pomiary ... ");
-    delay(500);
-    ds18b20read(f0, f1);
-    printTemp(f0, f1);
-    dht11read();
-    delay(5000);
-    waterRead();
-    doorsensorRead();
-    delay(5000);
-    gsmStatus();
-    delay(5000);
-     lcd.clear();
-    while (firstInitSMS == false)
-      {
-       
-      firstInitSMS = 1;
-      lcd.print("Wysylam SMS...");
-      delay(1000);
-      char sensor0[15];
-      char sensor1[15];
-      char sensorTDHT[15];
-      char sensorHDHT[15];
-/*    dtostrf(f0, 6, 2, sensor0);
-      dtostrf(f1, 6, 2, sensor1);
-      dtostrf((DHT.temperature, 1), 6, 2, sensorTDHT);
-      dtostrf((DHT.humidity, 1), 6, 2, sensorHDHT);
-      char sms[160];
-        strcpy(sms, "Odczyt Czujnikow: ");
-      strcat(sms, "\nTemp1: ");
-      strcat(sms, sensor0);
-      strcat(sms, "\nTemp2: ");
-      strcat(sms, sensor1);
-      strcat(sms, "\nDHT11 temp: ");
-      strcat(sms, sensorTDHT);
-      strcat(sms, "\nDHT11 hygro: ");
-      strcat(sms, sensorHDHT);*/
-     /* while (!gsm.sendSms("0048728480408", "PRZYWROCONO ZASILANIE NA MODULE GSM")) {
-    Serial.println("GSM FAIL");
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(" - SELF TEST3 - ");
-    lcd.setCursor(0, 1);
-    lcd.print("Testuje siec:[?]");
-        delay(5000);
-      
-   
-  }
-  Serial.println("GSM OK");
-  while (1) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(" - SELF TEST3 - ");
-    lcd.setCursor(0, 1);
-    lcd.print("Sygnal asu: ");
-    Serial.println((float)gsm.getSignalStrength(), 1);
-    lcd.print((float)gsm.getSignalStrength(), 1);
-    delay(1000);
-    break;
-    }
-*/
-  }
-  }
-  /*void tempAlert(int dst1, dst2 ) //nie sprawdzone, nie dziala
-    {
-    lcd.clear();
-        lcd.setCursor(0,10);
-        lcd.print(dst1);
-        lcd.setCursor(0,0);
-        lcd.print("Alert:");
-    }*/
-  void dht11read()
-  {
-    int chk = DHT.read11(DHT11_PIN);
-    Serial.print("DHT11 \t");
-    lcd.setCursor(9,0);
-    Serial.println(DHT.temperature, 1);
-     lcd.write(byte(3));
-      lcd.print(" ");
-      lcd.print(DHT.temperature, 1);
-      lcd.write(byte(4)); 
-    Serial.print(DHT.humidity, 1);
-    lcd.setCursor(9,1);
-      lcd.write(byte(0));
-      lcd.print(" ");
-      lcd.print(DHT.humidity, 1);
-      lcd.print("%");
-  }
-
-  void ds18b20read(float &f0, float &f1)
-  {
-    sensors.requestTemperatures();
-    int ds1 = 0;
-    int ds2 = 1;
-    f0 = sensors.getTempCByIndex(ds1);
-    f1 = sensors.getTempCByIndex(ds2);
-    Serial.print("Sensors: ");
-    Serial.println(dtostrf(f1, 6, 2, buffer));
-    Serial.println(dtostrf(f0, 6, 2, buffer));
-    int temp0 = f0;
-    int temp1 = f1;
-    lcd.setCursor(0,0);
-      lcd.clear();
-      lcd.write(byte(1));
-      lcd.print(dtostrf(f0, 6, 2, buffer));
-      lcd.write(byte(4));
-      lcd.setCursor(0,1);
-      lcd.write(byte(2));
-      lcd.print(dtostrf(f1, 6, 2, buffer));
-      lcd.write(byte(4));
-  }
-  void waterRead()
-  {
-    //lcd.setCursor(0,0);
-    //lcd.clear();
-    // lcd.print("Woda:     [OK]");
-  }
-  void doorsensorRead()
-  {
-    //lcd.setCursor(0,1);
-    //lcd.print("Drzwi:    [OK]");
-  }
-  void gsmStatus()
-  {
-    lcd.setCursor(0, 0);
-    //    lcd.clear();
-    // lcd.print((float)gsm.getIdent(),1);
-    //    lcd.setCursor(0,1);
-    //    lcd.print("Sygnal asu: ");
-    //    lcd.print((float)gsm.getSignalStrength(),1);
-  }
-  void printTemp(const float &f0, const float &f1) {
-    Serial.print("Sensor DS18B20(2) /t");
-    Serial.println(dtostrf(f1, 6, 2, buffer));
-    Serial.println(dtostrf(f0, 6, 2, buffer));
-    lcd.setCursor(0,0);
+  //DataDe//lay
+  delay(2000);
 }
+//Setup
+void setup()
+{
+  //  gsm.init();
+  lcd.begin(16, 2);
+  lcd.print("Zespol Czujnikow");
+  lcd.setCursor(0, 1);
+  lcd.print("GSM  - v.02 2016");
+  delay(2000);
+  gsm.init();
+  Serial.begin(9600);
+  //do SelfTests
+  selfTest();
+  lcd.createChar(0, hygro);
+  lcd.createChar(1, t1);
+  lcd.createChar(2, t2);
+  lcd.createChar(3, t3);
+  lcd.createChar(4, cels);
+  lcd.clear();
+  //Reload Sensor Bus
+  sensors.begin();
+}
+
+void loop()
+{
+
+  float f0, f1;
+  int WaterLevel;
+  int dht11hygro, dht11temp;
+  ds18b20read(f0, f1);
+// printTemp(f0, f1);
+  dht11read(dht11hygro, dht11temp);
+  delay(6000);
+  lcd.clear();
+  WaterSensor(WaterLevel);
+  doorsensorRead();
+  delay(3000);
+  gsmStatus();
+  delay(3000);
+  while (firstInitSMS == false)
+  {
+
+    firstInitSMS = 1;
+    lcd.print("Wysylam SMS...");
+    delay(1000);
+    char sensor0[15];
+    char sensor1[15];
+    char sensorTDHT[15];
+    char sensorHDHT[15];
+    /*    dtostrf(f0, 6, 2, sensor0);
+          dtostrf(f1, 6, 2, sensor1);
+          dtostrf((DHT.temperature, 1), 6, 2, sensorTDHT);
+          dtostrf((DHT.humidity, 1), 6, 2, sensorHDHT);
+          char sms[160];
+            strcpy(sms, "Odczyt Czujnikow: ");
+          strcat(sms, "\nTemp1: ");
+          strcat(sms, sensor0);
+          strcat(sms, "\nTemp2: ");
+          strcat(sms, sensor1);
+          strcat(sms, "\nDHT11 temp: ");
+          strcat(sms, sensorTDHT);
+          strcat(sms, "\nDHT11 hygro: ");
+          strcat(sms, sensorHDHT);*/
+    /* while (!gsm.sendSms("0048728480408", "PRZYWROCONO ZASILANIE NA MODULE GSM")) {
+      Serial.println("GSM FAIL");
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print(" - SELF TEST3 - ");
+      lcd.setCursor(0, 1);
+      lcd.print("Testuje siec:[?]");
+       delay(5000);
+
+
+      }
+      Serial.println("GSM OK");
+      while (1) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print(" - SELF TEST3 - ");
+      lcd.setCursor(0, 1);
+      lcd.print("Sygnal asu: ");
+      Serial.println((float)gsm.getSignalStrength(), 1);
+      lcd.print((float)gsm.getSignalStrength(), 1);
+      delay(1000);
+      break;
+      }
+    */
+  }
+}
+/*void tempAlert(int dst1, dst2 ) //nie sprawdzone, nie dziala
+  {
+  lcd.clear();
+      lcd.setCursor(0,10);
+      lcd.print(dst1);
+      lcd.setCursor(0,0);
+      lcd.print("Alert:");
+  }*/
+void dht11read(int &dht11hygro, int &dht11temp)
+{
+  int chk = DHT.read11(DHT11_PIN);
+  Serial.print("DHT11 \t");
+  lcd.setCursor(9, 0);
+  dht11temp=(DHT.temperature, 1);
+  Serial.println(DHT.temperature, 1);
+  lcd.write(byte(3));
+  lcd.print(" ");
+  lcd.print(DHT.temperature, 1);
+  lcd.write(byte(4));
+  dht11hygro=(DHT.humidity, 1);
+  Serial.print(dht11hygro);
+  lcd.setCursor(9, 1);
+  lcd.write(byte(0));
+  lcd.print(" ");
+  lcd.print(dht11hygro);
+  lcd.print("%");
+}
+
+void ds18b20read(float &f0, float &f1)
+{
+  sensors.requestTemperatures();
+  int ds1 = 0;
+  int ds2 = 1;
+  f0 = sensors.getTempCByIndex(ds1);
+  f1 = sensors.getTempCByIndex(ds2);
+  Serial.print("Sensors: ");
+  Serial.println(dtostrf(f1, 6, 2, buffer));
+  Serial.println(dtostrf(f0, 6, 2, buffer));
+  int temp0 = f0;
+  int temp1 = f1;
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.clear();
+  lcd.write(byte(1));
+  lcd.print(dtostrf(f0, 6, 2, buffer));
+  lcd.write(byte(4));
+  lcd.setCursor(0, 1);
+  lcd.write(byte(2));
+  lcd.print(dtostrf(f1, 6, 2, buffer));
+  lcd.write(byte(4));
+}
+
+void doorsensorRead()
+{
+  lcd.setCursor(0, 1);
+  lcd.print("Drzwi:    ");
+}
+void gsmStatus()
+{
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("AT_CMGS-GET INFO");
+  // lcd.print((float)gsm.getIdent(),1);
+  lcd.setCursor(0, 1);
+  lcd.print("Sygnal asu: ");
+  lcd.print((float)gsm.getSignalStrength(), 1);
+}
+
+void WaterSensor(int &WaterLevel)
+{
+  WaterLevel = analogRead(WaterRead);
+  Serial.println("\t Woda [OK >150]:");
+  Serial.println(WaterLevel);
+  lcd.setCursor(0, 0);
+  lcd.print("Woda:");
+  if (WaterLevel < 150) {
+    lcd.setCursor(10, 0);
+    lcd.print("[OK]");
+  }
+  else {
+    lcd.setCursor(10, 0);
+    lcd.print("ALERT!");
+  }
+
+}
+/*
+void printTemp(const float &f0, const float &f1) {
+  Serial.print("\t Sensor DS18B20(2) ");
+  Serial.println(dtostrf(f1, 6, 2, buffer));
+  Serial.println(dtostrf(f0, 6, 2, buffer));
+  lcd.setCursor(0, 0);
+}*/
 
