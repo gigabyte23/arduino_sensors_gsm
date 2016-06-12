@@ -21,11 +21,13 @@ dht DHT;
 byte addr[MAX_DS1820_SENSORS][8];
 //WaterSensor
 const int WaterRead = A7;
-
+//DoorSensor
+const int DoorRead = A6;
 //Init HD44780
 LiquidCrystal lcd(2, 3, 4, 5, 6, 7);
 //OneWireBuffer
 char buffer[25];
+char bufdht[25];
 byte maxlines = 2;
 char line1[16];
 char line2[16];
@@ -308,17 +310,19 @@ void setup()
 
 void loop()
 {
-
+  Serial.println("POMIARY... \t");
   float f0, f1;
   int WaterLevel;
-  int dht11hygro, dht11temp;
+  double dht11hygro, dht11temp;
+  bool doorStatus;
+  int doorResistance;
   ds18b20read(f0, f1);
 // printTemp(f0, f1);
   dht11read(dht11hygro, dht11temp);
   delay(6000);
   lcd.clear();
   WaterSensor(WaterLevel);
-  doorsensorRead();
+  doorsensorRead(doorResistance, doorStatus);
   delay(3000);
   gsmStatus();
   delay(3000);
@@ -372,34 +376,27 @@ void loop()
     */
   }
 }
-/*void tempAlert(int dst1, dst2 ) //nie sprawdzone, nie dziala
-  {
-  lcd.clear();
-      lcd.setCursor(0,10);
-      lcd.print(dst1);
-      lcd.setCursor(0,0);
-      lcd.print("Alert:");
-  }*/
-void dht11read(int &dht11hygro, int &dht11temp)
+void dht11read(double &dht11hygro, double &dht11temp)
 {
   int chk = DHT.read11(DHT11_PIN);
-  Serial.print("DHT11 \t");
+  Serial.println("DHT11 \t");
   lcd.setCursor(9, 0);
-  dht11temp=(DHT.temperature, 1);
-  Serial.println(DHT.temperature, 1);
+  dht11temp=(DHT.temperature);
+  Serial.println("Temperatura DHT: ");
+  Serial.println(dht11temp,0);
   lcd.write(byte(3));
   lcd.print(" ");
-  lcd.print(DHT.temperature, 1);
+  lcd.print(dht11temp,0);
   lcd.write(byte(4));
-  dht11hygro=(DHT.humidity, 1);
-  Serial.print(dht11hygro);
+  dht11hygro=(DHT.humidity);
+  Serial.println("Wilgotnosc DHT: ");
+  Serial.println(dht11hygro,0);
   lcd.setCursor(9, 1);
   lcd.write(byte(0));
   lcd.print(" ");
-  lcd.print(dht11hygro);
+  lcd.print(dht11hygro,0);
   lcd.print("%");
 }
-
 void ds18b20read(float &f0, float &f1)
 {
   sensors.requestTemperatures();
@@ -407,11 +404,11 @@ void ds18b20read(float &f0, float &f1)
   int ds2 = 1;
   f0 = sensors.getTempCByIndex(ds1);
   f1 = sensors.getTempCByIndex(ds2);
-  Serial.print("Sensors: ");
+  Serial.println("DS18b20 \t");
+  Serial.println("DS 1 temp: ");
   Serial.println(dtostrf(f1, 6, 2, buffer));
+  Serial.println("DS 2 temp: ");
   Serial.println(dtostrf(f0, 6, 2, buffer));
-  int temp0 = f0;
-  int temp1 = f1;
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.clear();
@@ -424,10 +421,24 @@ void ds18b20read(float &f0, float &f1)
   lcd.write(byte(4));
 }
 
-void doorsensorRead()
+void doorsensorRead(int &doorResistance, bool &doorStatus)
 {
+  doorResistance = analogRead(DoorRead);
+  Serial.println("Drzwi [OK <= 15]:");
+  Serial.println(doorResistance);
   lcd.setCursor(0, 1);
-  lcd.print("Drzwi:    ");
+  lcd.print("Drzwi:");
+  if (doorResistance < 15) {
+    lcd.setCursor(10, 1);
+    lcd.print("[OK]");
+    doorStatus = true;
+  }
+  else {
+    lcd.setCursor(10, 1);
+    lcd.print("ALERT!");
+    doorStatus = false;
+  }
+
 }
 void gsmStatus()
 {
@@ -443,7 +454,7 @@ void gsmStatus()
 void WaterSensor(int &WaterLevel)
 {
   WaterLevel = analogRead(WaterRead);
-  Serial.println("\t Woda [OK >150]:");
+  Serial.println("Woda [OK <= 150]:");
   Serial.println(WaterLevel);
   lcd.setCursor(0, 0);
   lcd.print("Woda:");
