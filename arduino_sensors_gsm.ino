@@ -10,6 +10,17 @@
 #include <SoftwareSerial.h>
 #include "GSM_G510.h"
 
+/////////////////////////
+//ALERTS//SETUP//VALUES//
+const float temp1Hi = 50; 
+const float temp1Lo = 5;
+const float temp2Hi = 45;
+const float temp2Lo = 5;
+const double temp3Hi = 35;
+const double temp3Lo = 5;
+const double hygroHi = 65;
+/////////////////////////
+
 //GSM TX RX ON
 GSM_G510 gsm = GSM_G510(10, 11, 12);
 //Init DigitalHygroTempSensor
@@ -86,6 +97,16 @@ byte cels[8] = {
   0b00100,
   0b00100,
   0b00011
+};
+byte antenna[8] = {
+  0b00000,
+  0b10101,
+  0b01110,
+  0b00100,
+  0b00100,
+  0b00100,
+  0b00100,
+  0b00000
 };
 void selfTest()
 {
@@ -176,7 +197,6 @@ void selfTest()
   delay(1000);
   lcd.clear();
   ds.reset_search();
-
   //DHT11
   Serial.print("DHT11, \t");
   int chk = DHT.read11(DHT11_PIN);
@@ -252,27 +272,40 @@ void selfTest()
       Serial.print("Unknown error,\t");
   }
   //GSM
-    gsm.init();
-    lcd.setCursor(0, 0);
-    lcd.print(" - SELF TEST3 - ");
-    lcd.setCursor(0, 1);
-    lcd.print("Laczenie GSM... ");
-    Serial.println("Start - oczekiwanie na polaczenie z siecia (15 sekund)");
-    delay(15000);
-    Serial.println("Wysylanie...");
-    while (!gsm.sendSms("0048728480408", "PRZYWROCONO ZASILANIE NA MODULE GSM")) {
-    Serial.println("GSM FAIL");
+  gsm.init();
+  unsigned int smsattemp = 0;
+  lcd.setCursor(0, 0);
+  lcd.print(" - SELF TEST3 - ");
+  lcd.setCursor(0, 1);
+  lcd.print("Laczenie GSM... ");
+  Serial.println("Start - oczekiwanie na polaczenie z siecia (15 sekund)");
+  delay(15000);
+  Serial.println("Wysylanie...");
+  while (!gsm.sendSms("0048728480408", "PRZYWROCONO ZASILANIE NA MODULE GSM")) {
+    Serial.println("GSM - oczekuje...");
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print(" - SELF TEST3 - ");
     lcd.setCursor(0, 1);
-    lcd.print("[Czekam na siec]");
-        delay(5000);
-
-
-    }
+    lcd.print("[Czekam: ");
+    lcd.print(smsattemp);
+    lcd.print("]");
+    delay(1000);
+    if (smsattemp == 5)
+    break;
+    smsattemp++;
+  }
+  if (smsattemp == 5) {
+    Serial.println("GSM Fail");
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print(" - SELF TEST3 - ");
+    lcd.setCursor(0, 1);
+    lcd.print("Blad Polaczenia!");
+    delay(5000);
+  }
+  else {
     Serial.println("GSM OK");
-    while (1) {
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print(" - SELF TEST3 - ");
@@ -281,10 +314,7 @@ void selfTest()
     Serial.println((float)gsm.getSignalStrength(), 1);
     lcd.print((float)gsm.getSignalStrength(), 1);
     delay(1000);
-    break;
-    } 
-  //DataDe//lay
-  //delay(2000);
+  }
 }
 //Setup
 void setup()
@@ -296,7 +326,7 @@ void setup()
   delay(3000);
   lcd.print("  rev.1.02-GSM" );
   delay(1500);
-  lcd.setCursor(0,0);
+  lcd.setCursor(0, 0);
   lcd.clear();
   lcd.print("L.Skwarszczow");
   lcd.setCursor(0, 1);
@@ -310,6 +340,7 @@ void setup()
   lcd.createChar(2, t2);
   lcd.createChar(3, t3);
   lcd.createChar(4, cels);
+  lcd.createChar(5, antenna);
   lcd.clear();
   //Reload Sensor Bus
   sensors.begin();
@@ -323,11 +354,12 @@ void loop()
   int WaterLevel;
   double dht11hygro, dht11temp;
   bool doorStatus;
+  bool waterStatus;
   char doorStatus0[10];
   char waterStatus0[10];
+  char AlertMessageSign[25];
   int doorResistance;
   ds18b20read(f0, f1);
-  // printTemp(f0, f1);
   dht11read(dht11hygro, dht11temp);
   delay(6000);
   lcd.clear();
@@ -336,17 +368,64 @@ void loop()
   delay(1500);
   gsmStatus();
   delay(1500);
-
-  //doorStatus(bool->char)
-  if(doorStatus = true){
-    strcpy(doorStatus0, "OTWARTE!");
+  //Temp 1 alert
+  bool alert1temp = false;
+  if(f0 <= temp1Lo || f0 >= temp1Hi){
+  alert1temp = true;
+  strcpy(AlertMessageSign, "ALERT - TEMP1");
   }
   else{
+  alert1temp = false;  
+  }
+  //Temp 2 alert
+  bool alert2temp = false;
+  if(f1 <= temp2Lo || f1 >= temp2Hi){
+  alert2temp = true;
+  strcpy(AlertMessageSign, "ALERT - TEMP2");
+  }
+  else{
+  alert2temp = false;  
+  }
+  //Temp 3 alert
+  bool alert3temp = false;
+  if(dht11temp <= temp3Lo || dht11temp >= temp3Hi){
+  alert3temp = true;
+  strcpy(AlertMessageSign, "ALERT - TEMP3");
+  }
+  else{
+  alert3temp = false;  
+  }
+  //Hygro Alert
+  bool alert4hygro = false;
+  if(dht11hygro >= hygroHi){
+  alert4hygro = true;
+  strcpy(AlertMessageSign, "ALERT - WILGOTNOSC");
+  }
+  else{
+  alert4hygro = false;  
+  }
+  //Door Alert
+  //doorStatus(bool->char)
+  if (doorStatus == false) {
+    strcpy(doorStatus0, "OTWARTE!");
+    strcpy(AlertMessageSign, "ALERT CZUJNIKA DRZWI");
+  }
+  else {
     strcpy(doorStatus0, "Zamkniete");
   }
-
+   //Water Alert
+  if (WaterLevel < 150){
+    strcpy(doorStatus0, "OK");
+    waterStatus=false;
+  }
+  else{
+    strcpy(doorStatus0, "ALERT!");
+    strcpy(AlertMessageSign, "ALERT CZUJNIKA WODY");
+    waterStatus=true;
+  }
   //Events via SMS
-  while (firstInitSMS == false)
+  unsigned int sms2attemp = 0;
+  while (firstInitSMS == false || waterStatus == true || doorStatus == false || alert4hygro == true || alert3temp == true || alert2temp == true || alert1temp == true)
   {
     firstInitSMS = 1;
     lcd.clear();
@@ -358,40 +437,54 @@ void loop()
     char sensorHDHT[15];
     char waterSMS[10];
     char doorSMS[10];
-         dtostrf(f0, 6, 2, sensor0);
-         dtostrf(f1, 6, 2, sensor1);
-         dtostrf(dht11temp, 6, 2, sensorTDHT);
-         dtostrf(dht11hygro, 6, 2, sensorHDHT);
-          char sms[160];
-          strcpy(sms, "Odczyt Czujnikow: ");
-          strcat(sms, "\nTemp1: ");
-          strcat(sms, sensor0);
-          strcat(sms, "\nTemp2: ");
-          strcat(sms, sensor1);
-          strcat(sms, "\nDHT11 temp: ");
-          strcat(sms, sensorTDHT);
-          strcat(sms, "\nDHT11 hygro: ");
-          strcat(sms, sensorHDHT);
-          strcat(sms, "\nDrzwi: ");
-          strcat(sms, doorStatus0);
-      while (!gsm.sendSms("0048728480408", sms)) {
+    dtostrf(f0, 6, 2, sensor0);
+    dtostrf(f1, 6, 2, sensor1);
+    dtostrf(dht11temp, 6, 2, sensorTDHT);
+    dtostrf(dht11hygro, 6, 2, sensorHDHT);
+    char sms[160];
+    strcpy(sms, "Odczyt Czujnikow: ");
+    strcat(sms, AlertMessageSign);
+    strcat(sms, "\nTemp1: ");
+    strcat(sms, sensor0);
+    strcat(sms, "\nTemp2: ");
+    strcat(sms, sensor1);
+    strcat(sms, "\nDHT11 temp: ");
+    strcat(sms, sensorTDHT);
+    strcat(sms, "\nDHT11 hygro: ");
+    strcat(sms, sensorHDHT);
+    strcat(sms, "\nDrzwi: ");
+    strcat(sms, doorStatus0);
+    strcat(sms, "\nWoda: ");
+    strcat(sms, waterStatus0);
+    while (!gsm.sendSms("0048728480408", sms)) {
       Serial.println("Wysylanie SMS");
       lcd.setCursor(0, 1);
-      lcd.print("[Czekam na siec]");
-       delay(5000);
-      }
-      Serial.println("GSM OK - wyslano");
-      while (1) {
+      lcd.print("[Czekam: ");
+      lcd.print(sms2attemp);
+      lcd.print("]");
+      delay(1000);
+      if (sms2attemp == 20)
+        break;
+      sms2attemp++;
+    }
+    if (sms2attemp == 20) {
+      Serial.println("GSM Fail");
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("GSM ALERT");
+      lcd.setCursor(0, 1);
+      lcd.print("Blad Polaczenia!");
+      delay(5000);
+    }
+    else {
+      Serial.println("GSM OK");
       lcd.clear();
       lcd.setCursor(0, 0);
       lcd.print("Wiadomosc SMS");
       lcd.setCursor(0, 1);
-      lcd.print("- Wyslano -");
-      Serial.println((float)gsm.getSignalStrength(), 1);
+      lcd.print("Wyslana!");
       delay(1000);
-      break;
-      }
-    
+    }
   }
 }
 void dht11read(double &dht11hygro, double &dht11temp)
@@ -457,7 +550,7 @@ void doorsensorRead(int &doorResistance, bool &doorStatus)
     lcd.setCursor(8, 1);
     lcd.print("[ALERT!]");
     doorStatus = false;
-    digitalWrite(13, HIGH);  
+    digitalWrite(13, HIGH);
   }
 
 }
@@ -465,10 +558,12 @@ void gsmStatus()
 {
   lcd.clear();
   lcd.setCursor(0, 0);
-  // lcd.print((float)gsm.getIdent(),1);
+  lcd.print("GSM Status");
   lcd.setCursor(0, 1);
-  lcd.print("Sygnal asu: ");
+  lcd.write(byte(5));
+  lcd.print(" ");
   lcd.print((float)gsm.getSignalStrength(), 1);
+  lcd.print(" asu");
   Serial.println("Sygnal GSM: ");
   Serial.println((float)gsm.getSignalStrength(), 1);
 }
@@ -491,11 +586,3 @@ void WaterSensor(int &WaterLevel)
   }
 
 }
-/*
-  void printTemp(const float &f0, const float &f1) {
-  Serial.print("\t Sensor DS18B20(2) ");
-  Serial.println(dtostrf(f1, 6, 2, buffer));
-  Serial.println(dtostrf(f0, 6, 2, buffer));
-  lcd.setCursor(0, 0);
-  }*/
-
